@@ -14,7 +14,7 @@ body {
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.note-form {
+.controls, .note-form {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -36,7 +36,12 @@ button {
   cursor: pointer;
 }
 
-button:hover {
+button:disabled {
+  background-color: #a0c4ff;
+  cursor: not-allowed;
+}
+
+button:hover:not(:disabled) {
   background-color: #0056b3;
 }
 
@@ -52,9 +57,14 @@ button:hover {
   border-bottom: 1px solid #eee;
 }
 
+.note-text {
+  flex-grow: 1;
+  padding-right: 10px;
+}
+
 .delete-btn {
   background-color: #dc3545;
 }
-.delete-btn:hover {
+.delete-btn:hover:not(:disabled) {
   background-color: #bd2130;
 }

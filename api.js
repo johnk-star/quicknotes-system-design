@@ -2,65 +2,93 @@ const API_BASE_URL = 'https://jsonplaceholder.typicode.com/posts';
 
 const notesList = document.getElementById('notes-list');
 const statusMessage = document.getElementById('status-message');
+const loadBtn = document.getElementById('load-btn');
 const addBtn = document.getElementById('add-btn');
 const titleInput = document.getElementById('note-title');
 const contentInput = document.getElementById('note-content');
 
-// Helper to update status messages (loading, error, empty)
+let localNotes = [];
+
 function setStatus(message, className) {
   statusMessage.textContent = message;
   statusMessage.className = className;
 }
 
-// GET: Fetch notes
-async function fetchNotes() {
-  setStatus('Loading notes...', 'loading');
-  try {
-    const response = await fetch(`${API_BASE_URL}?_limit=5`);
-    if (!response.ok) throw new Error('Failed to load notes');
-    const notes = await response.json();
-    
-    if (notes.length === 0) {
-      setStatus('No notes found.', 'empty');
-      notesList.innerHTML = '';
-      return;
-    }
-
-    setStatus('', '');
-    renderNotes(notes);
-  } catch (err) {
-    setStatus(`Error: ${err.message}`, 'error');
-  }
+function setButtonsDisabled(disabled) {
+  loadBtn.disabled = disabled;
+  addBtn.disabled = disabled;
+  const deleteBtns = document.querySelectorAll('.delete-btn');
+  deleteBtns.forEach(btn => btn.disabled = disabled);
 }
 
-// Render notes to DOM
-function renderNotes(notes) {
+// Safely render notes using DOM manipulation & textContent (prevents XSS)
+function renderNotes() {
   notesList.innerHTML = '';
-  notes.forEach(note => {
+  
+  if (localNotes.length === 0) {
+    setStatus('No notes found.', 'empty');
+    return;
+  }
+
+  setStatus('', '');
+  localNotes.forEach(note => {
     const li = document.createElement('li');
     li.className = 'note-item';
-    li.innerHTML = `
-      <div>
-        <strong>${note.title}</strong>
-        <p>${note.body || note.content}</p>
-      </div>
-      <button class="delete-btn" onclick="deleteNote(${note.id})">Delete</button>
-    `;
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'note-text';
+
+    const titleElem = document.createElement('strong');
+    titleElem.textContent = note.title;
+
+    const bodyElem = document.createElement('p');
+    bodyElem.textContent = note.body || note.content;
+
+    textDiv.appendChild(titleElem);
+    textDiv.appendChild(bodyElem);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'delete-btn';
+    delBtn.textContent = 'Delete';
+    delBtn.onclick = () => deleteNote(note.id);
+
+    li.appendChild(textDiv);
+    li.appendChild(delBtn);
     notesList.appendChild(li);
   });
 }
 
-// POST: Create a note
+// GET: Fetch 10 notes on button click
+loadBtn.addEventListener('click', async () => {
+  setStatus('Loading notes...', 'loading');
+  setButtonsDisabled(true);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}?_limit=10`);
+    if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+    
+    localNotes = await response.json();
+    renderNotes();
+  } catch (err) {
+    setStatus(`Error loading notes: ${err.message}`, 'error');
+  } finally {
+    setButtonsDisabled(false);
+  }
+});
+
+// POST: Add note with optimistic state mutation
 addBtn.addEventListener('click', async () => {
   const title = titleInput.value.trim();
   const content = contentInput.value.trim();
 
   if (!title || !content) {
-    alert('Please fill out both title and content');
+    alert('Please enter both title and content.');
     return;
   }
 
   setStatus('Adding note...', 'loading');
+  setButtonsDisabled(true);
+
   try {
     const response = await fetch(API_BASE_URL, {
       method: 'POST',
@@ -68,32 +96,45 @@ addBtn.addEventListener('click', async () => {
       body: JSON.stringify({ title, body: content, userId: 1 })
     });
 
-    if (!response.ok) throw new Error('Failed to create note');
+    if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
     
+    const createdNote = await response.json();
+    // Assign incremental ID for mock backend demonstration
+    createdNote.id = localNotes.length ? Math.max(...localNotes.map(n => n.id)) + 1 : 1;
+    
+    localNotes.unshift(createdNote);
     titleInput.value = '';
     contentInput.value = '';
+    
+    renderNotes();
     setStatus('Note added successfully!', 'loading');
-    setTimeout(() => fetchNotes(), 1000);
+    setTimeout(() => setStatus('', ''), 2000);
   } catch (err) {
-    setStatus(`Error: ${err.message}`, 'error');
+    setStatus(`Error adding note: ${err.message}`, 'error');
+  } finally {
+    setButtonsDisabled(false);
   }
 });
 
-// DELETE: Remove a note
+// DELETE: Remove note locally
 async function deleteNote(id) {
   setStatus('Deleting note...', 'loading');
+  setButtonsDisabled(true);
+
   try {
     const response = await fetch(`${API_BASE_URL}/${id}`, {
       method: 'DELETE'
     });
 
-    if (!response.ok) throw new Error('Failed to delete note');
-    
+    if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+
+    localNotes = localNotes.filter(note => note.id !== id);
+    renderNotes();
     setStatus('Note deleted successfully!', 'loading');
-    setTimeout(() => fetchNotes(), 1000);
+    setTimeout(() => setStatus('', ''), 2000);
   } catch (err) {
-    setStatus(`Error: ${err.message}`, 'error');
+    setStatus(`Error deleting note: ${err.message}`, 'error');
+  } finally {
+    setButtonsDisabled(false);
   }
 }
-
-document.addEventListener('DOMContentLoaded', fetchNotes);
