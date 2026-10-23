@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickNotes System Design Demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>QuickNotes Dashboard</h1>
+    
+    <div class="note-form">
+      <h2>Create Note</h2>
+      <input type="text" id="note-title" placeholder="Note Title...">
+      <textarea id="note-content" placeholder="Note Content..."></textarea>
+      <button id="add-btn">Add Note</button>
+    </div>
+
+    <h2>Your Notes</h2>
+    <div id="status-message"></div>
+    <ul id="notes-list"></ul>
+  </div>
+
+  <script src="api.js"></script>
+</body>
+</html>
